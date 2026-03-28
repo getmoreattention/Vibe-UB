@@ -15,6 +15,7 @@ module ub_pcs_fec_dec (
 
     reg [1:0] state;
     reg [128*8-1:0] cw_reg;
+    reg syndromes_zero_q;
     
     wire [63:0] syndromes;
     ub_pcs_fec_syndrome u_syndrome (
@@ -59,6 +60,7 @@ module ub_pcs_fec_dec (
         if (!rst_n) begin
             state <= ST_IDLE;
             cw_reg <= 0;
+            syndromes_zero_q <= 0;
             msg_out <= 0;
             valid_out <= 0;
             fec_fail <= 0;
@@ -73,6 +75,7 @@ module ub_pcs_fec_dec (
                 ST_IDLE: begin
                     if (valid_in) begin
                         cw_reg <= cw_in;
+                        syndromes_zero_q <= syndromes_zero;
                         if (syndromes_zero) begin
                             state <= ST_DONE;
                         end else begin
@@ -98,7 +101,11 @@ module ub_pcs_fec_dec (
                 end
                 
                 ST_DONE: begin
-                    msg_out <= (cw_reg[1023:0] ^ error_magnitudes) >> 64; // Correct and strip 8 parity bytes
+                    if (syndromes_zero_q)
+                        msg_out <= cw_reg[1023:64];
+                    else
+                        msg_out <= (cw_reg[1023:0] ^ error_magnitudes) >> 64; // Correct and strip 8 parity bytes
+                    
                     valid_out <= 1;
                     // For now, we don't have a sophisticated fec_fail check.
                     // A simple one: if syndromes were not zero but no errors were found?
