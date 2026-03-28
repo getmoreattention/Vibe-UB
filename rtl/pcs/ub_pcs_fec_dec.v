@@ -6,6 +6,15 @@ module ub_pcs_fec_dec (
     output reg valid_out,
     output reg fec_fail
 );
+    wire [8*8-1:0] syndromes;
+    
+    ub_pcs_fec_syndrome u_syndrome (
+        .cw_in(cw_in),
+        .syndromes(syndromes)
+    );
+    
+    wire syndromes_zero = (syndromes == 0);
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             msg_out <= 0;
@@ -14,7 +23,7 @@ module ub_pcs_fec_dec (
         end else if (valid_in) begin
             msg_out <= cw_in[128*8-1:64]; // Extract first 120 bytes
             valid_out <= 1;
-            fec_fail <= 0; // Assume success in skeleton
+            fec_fail <= !syndromes_zero;
         end else begin
             valid_out <= 0;
         end
